@@ -13,6 +13,22 @@ export type CanvasShape =
 
 export type GarmentSide = 'frente' | 'espalda' | 'ambos';
 
+export type CartelColorPattern =
+  | 'solido'
+  | 'horizontal'
+  | 'vertical'
+  | 'diagonal'
+  | 'circular'
+  | 'marco'
+  | 'degradado-lineal'
+  | 'degradado-radial';
+
+export interface CartelBgConfig {
+  pattern: CartelColorPattern;
+  primaryColor: string;
+  secondaryColor: string;
+}
+
 export interface ProductConfiguration {
   productId: string;
   widthCm: number;
@@ -23,6 +39,7 @@ export interface ProductConfiguration {
   structureId?: StructureType;
   shape?: CanvasShape;
   garmentColor?: string;
+  cartelBg?: CartelBgConfig;
   printPlacement?: string;
   activeSide?: GarmentSide;
   quantity: number;
@@ -157,7 +174,7 @@ export interface QuoteBreakdown {
   };
 }
 
-export type ElementType = 'text' | 'image';
+export type ElementType = 'text' | 'image' | 'shape';
 
 export interface BaseCanvasElement {
   id: string;
@@ -196,7 +213,21 @@ export interface ImageCanvasElement extends BaseCanvasElement {
   isPrintedTexture?: boolean;
 }
 
-export type CanvasElement = TextCanvasElement | ImageCanvasElement;
+export type ShapeType = 'rect' | 'circle' | 'ellipse' | 'escudo' | 'star' | 'triangle' | 'badge';
+
+export interface ShapeCanvasElement extends BaseCanvasElement {
+  type: 'shape';
+  shapeType: ShapeType;
+  fill: string;
+  fillSecondary?: string;
+  colorPattern?: 'solido' | 'horizontal' | 'vertical' | 'diagonal' | 'radial';
+  stroke?: string;
+  strokeWidth?: number;
+  cornerRadius?: number;
+  opacity?: number;
+}
+
+export type CanvasElement = TextCanvasElement | ImageCanvasElement | ShapeCanvasElement;
 
 export interface DesignDocument {
   version: 1;

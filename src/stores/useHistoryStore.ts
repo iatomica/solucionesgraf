@@ -20,17 +20,19 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   canUndo: false,
   canRedo: false,
 
-  pushState: (elements: CanvasElement[]) => {
-    const current = useCanvasStore.getState().elements;
-    // Avoid duplicate pushes of identical states
-    if (JSON.stringify(current) === JSON.stringify(elements)) return;
+  pushState: (elements?: CanvasElement[]) => {
+    const snapshot = elements || useCanvasStore.getState().elements;
+    if (!snapshot) return;
 
     set((state) => {
-      const newPast = [...state.past, current].slice(-30); // keep up to 30 history states
+      const last = state.past[state.past.length - 1];
+      if (last && last === snapshot) return state;
+
+      const newPast = [...state.past, snapshot].slice(-30);
       return {
         past: newPast,
         future: [],
-        canUndo: newPast.length > 0,
+        canUndo: true,
         canRedo: false,
       };
     });

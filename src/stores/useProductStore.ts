@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CanvasShape, GarmentSide, ProductConfiguration, StructureType } from '../types';
+import type { CanvasShape, CartelBgConfig, GarmentSide, ProductConfiguration, StructureType } from '../types';
 import { getProductById, MOCK_PRODUCTS } from '../products/productDefinitions';
 
 interface ProductStoreState {
@@ -12,6 +12,7 @@ interface ProductStoreState {
   setStructure: (structureId?: StructureType) => void;
   setShape: (shape?: CanvasShape) => void;
   setGarmentColor: (color: string) => void;
+  setCartelBg: (bg: Partial<CartelBgConfig>) => void;
   setPrintPlacement: (placement: string) => void;
   setActiveSide: (side: GarmentSide) => void;
   setQuantity: (quantity: number) => void;
@@ -30,6 +31,11 @@ const initialConfig: ProductConfiguration = {
   structureId: 'ninguna',
   shape: 'rectangular',
   garmentColor: '#F8FAFC', // Default Blanco Puro
+  cartelBg: {
+    pattern: 'solido',
+    primaryColor: '#FFFFFF',
+    secondaryColor: '#0F172A',
+  },
   printPlacement: 'frente-pecho',
   activeSide: 'frente',
   quantity: 2,
@@ -54,7 +60,12 @@ export const useProductStore = create<ProductStoreState>((set) => ({
         finishId: defaultFinish,
         structureId: 'ninguna',
         shape: productDef.defaultShape || 'rectangular',
-        garmentColor: '#F8FAFC', // Default Blanco Puro
+        garmentColor: productDef.category === 'textil' ? '#F3E8FF' : '#F8FAFC',
+        cartelBg: {
+          pattern: 'solido',
+          primaryColor: '#FFFFFF',
+          secondaryColor: '#0F172A',
+        },
         printPlacement: 'frente-pecho',
         activeSide: 'frente',
         quantity: 1,
@@ -146,6 +157,19 @@ export const useProductStore = create<ProductStoreState>((set) => ({
       configuration: {
         ...state.configuration,
         garmentColor: color,
+      },
+    }));
+  },
+
+  setCartelBg: (bg: Partial<CartelBgConfig>) => {
+    set((state) => ({
+      configuration: {
+        ...state.configuration,
+        cartelBg: {
+          pattern: bg.pattern || state.configuration.cartelBg?.pattern || 'solido',
+          primaryColor: bg.primaryColor || state.configuration.cartelBg?.primaryColor || '#FFFFFF',
+          secondaryColor: bg.secondaryColor || state.configuration.cartelBg?.secondaryColor || '#0F172A',
+        },
       },
     }));
   },

@@ -16,6 +16,15 @@ import {
   Zap,
   Maximize2,
   Shirt,
+  Palette,
+  Sparkles,
+  Shapes,
+  Square,
+  Circle as CircleIcon,
+  Shield,
+  Star as StarIcon,
+  Triangle,
+  Plus,
 } from 'lucide-react';
 import { useCanvasStore } from '../../stores/useCanvasStore';
 import { useSelectionStore } from '../../stores/useSelectionStore';
@@ -25,12 +34,26 @@ import type {
   ImageCanvasElement,
   LightEffectType,
   TextCanvasElement,
+  ShapeCanvasElement,
+  ShapeType,
   GarmentSide,
 } from '../../types';
 import { getProductById } from '../../products/productDefinitions';
 import { createWebProxyImage } from '../../utils/imageProxy';
 
-const FONT_OPTIONS = ['Inter', 'Arial', 'Roboto', 'Impact', 'Georgia', 'Courier New'];
+const FONT_OPTIONS = [
+  'Inter',
+  'Montserrat',
+  'Bebas Neue',
+  'Oswald',
+  'Playfair Display',
+  'Pacifico',
+  'Arial',
+  'Roboto',
+  'Impact',
+  'Georgia',
+  'Courier New',
+];
 
 interface RightPanelProps {
   onOpenTemplates?: () => void;
@@ -49,28 +72,77 @@ export const RightPanel: React.FC<RightPanelProps> = () => {
 
   const { selectedId, selectElement } = useSelectionStore();
   const { pushState } = useHistoryStore();
-  const { configuration } = useProductStore();
+  const { configuration, setProduct } = useProductStore();
 
   const [activeTab, setActiveTab] = useState<'tools' | 'layers'>('tools');
   const [newText, setNewText] = useState('NUEVO TEXTO');
+  const [newTextFont, setNewTextFont] = useState('Inter');
+  const [newTextColor, setNewTextColor] = useState('#0F172A');
+
+  // State for adding shape layers
+  const [selectedShapeType, setSelectedShapeType] = useState<ShapeType>('rect');
+  const [selectedShapeFill, setSelectedShapeFill] = useState('#2563EB');
 
   const selectedElement = elements.find((el) => el.id === selectedId);
   const productDef = getProductById(configuration.productId);
 
+  // Add shape layer element
+  const handleAddShape = (shapeTypeToUse?: ShapeType) => {
+    pushState(elements);
+    const chosenType = shapeTypeToUse || selectedShapeType;
+    const isEquilateral =
+      chosenType === 'circle' || chosenType === 'star' || chosenType === 'triangle';
+
+    const targetW = Number(Math.min(configuration.widthCm * 0.45, 50).toFixed(1));
+    const targetH = isEquilateral ? targetW : Number((targetW * 0.65).toFixed(1));
+
+    // Stagger position if there are already shapes so layers don't overlap 100% invisibly
+    const existingShapes = elements.filter((e) => e.type === 'shape');
+    const offsetStep = existingShapes.length > 0 ? ((existingShapes.length % 5) + 1) * 2.5 : 0;
+    const centerX = (configuration.widthCm - targetW) / 2;
+    const centerY = (configuration.heightCm - targetH) / 2;
+    const initialX = Number(Math.max(2, Math.min(configuration.widthCm - targetW - 2, centerX + offsetStep)).toFixed(2));
+    const initialY = Number(Math.max(2, Math.min(configuration.heightCm - targetH - 2, centerY + offsetStep)).toFixed(2));
+
+    const newEl: ShapeCanvasElement = {
+      id: `shape-${Date.now()}`,
+      type: 'shape',
+      shapeType: chosenType,
+      fill: selectedShapeFill,
+      fillSecondary: '#FFFFFF',
+      colorPattern: 'solido',
+      x: initialX,
+      y: initialY,
+      width: targetW,
+      height: targetH,
+      rotation: 0,
+      stroke: '#CBD5E1',
+      strokeWidth: 2,
+      cornerRadius: chosenType === 'rect' ? 8 : 0,
+      opacity: 1,
+      side: configuration.activeSide || 'frente',
+      zIndex: elements.length + 1,
+    };
+    addElement(newEl);
+    selectElement(newEl.id);
+  };
+
   // Add text element
   const handleAddText = () => {
     pushState(elements);
+    const targetW = Math.min(configuration.widthCm * 0.6, 40);
+    const targetH = 8;
     const newEl: TextCanvasElement = {
       id: `text-${Date.now()}`,
       type: 'text',
       text: newText || 'TEXTO PERSONALIZADO',
-      x: configuration.widthCm / 4,
-      y: configuration.heightCm / 3,
-      width: configuration.widthCm / 2,
-      height: 10,
+      x: Number(Math.max(2, (configuration.widthCm - targetW) / 2).toFixed(2)),
+      y: Number(Math.max(2, (configuration.heightCm - targetH) / 2).toFixed(2)),
+      width: targetW,
+      height: targetH,
       fontSize: 48,
-      fontFamily: 'Inter',
-      fill: '#0F172A',
+      fontFamily: newTextFont,
+      fill: newTextColor,
       align: 'center',
       bold: true,
       rotation: 0,
@@ -78,6 +150,7 @@ export const RightPanel: React.FC<RightPanelProps> = () => {
       zIndex: elements.length + 1,
     };
     addElement(newEl);
+    selectElement(newEl.id);
   };
 
   // Image upload handler using Web Proxy format
@@ -212,6 +285,10 @@ export const RightPanel: React.FC<RightPanelProps> = () => {
                       <div
                         key={el.id}
                         onClick={() => selectElement(el.id)}
+                        onDoubleClick={() => {
+                          selectElement(el.id);
+                          setActiveTab('tools');
+                        }}
                         className={`flex items-center justify-between p-2 rounded-md border text-xs cursor-pointer transition-all ${
                           isSel
                             ? 'bg-blue-50 border-blue-300 text-blue-900 font-medium shadow-2xs'
@@ -225,9 +302,32 @@ export const RightPanel: React.FC<RightPanelProps> = () => {
                           {el.type === 'image' && (
                             <ImageIcon className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                           )}
+                          {el.type === 'shape' && (
+                            <div
+                              className="w-3.5 h-3.5 rounded-xs border border-slate-300 shrink-0 shadow-2xs"
+                              style={{ backgroundColor: (el as ShapeCanvasElement).fill || '#2563EB' }}
+                              title={`Forma ${(el as ShapeCanvasElement).shapeType}`}
+                            />
+                          )}
                           <span className="truncate">
                             {el.type === 'text'
                               ? `"${(el as TextCanvasElement).text}"`
+                              : el.type === 'shape'
+                              ? `Capa: ${
+                                  (el as ShapeCanvasElement).shapeType === 'circle'
+                                    ? 'Círculo'
+                                    : (el as ShapeCanvasElement).shapeType === 'escudo'
+                                    ? 'Escudo'
+                                    : (el as ShapeCanvasElement).shapeType === 'ellipse'
+                                    ? 'Óvalo'
+                                    : (el as ShapeCanvasElement).shapeType === 'star'
+                                    ? 'Estrella'
+                                    : (el as ShapeCanvasElement).shapeType === 'triangle'
+                                    ? 'Triángulo'
+                                    : (el as ShapeCanvasElement).shapeType === 'badge'
+                                    ? 'Placa'
+                                    : 'Rectángulo'
+                                }`
                               : 'Imagen / Logo'}
                           </span>
                           {productDef.category === 'textil' && (
@@ -238,6 +338,17 @@ export const RightPanel: React.FC<RightPanelProps> = () => {
                         </div>
 
                         <div className="flex items-center space-x-1 shrink-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectElement(el.id);
+                              setActiveTab('tools');
+                            }}
+                            className="p-1 hover:bg-white rounded text-blue-600"
+                            title="Editar propiedades de capa"
+                          >
+                            <Palette className="w-3 h-3" />
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -285,12 +396,16 @@ export const RightPanel: React.FC<RightPanelProps> = () => {
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center space-x-1.5">
                 {selectedElement.type === 'text' ? (
                   <Type className="w-4 h-4 text-blue-600" />
+                ) : selectedElement.type === 'shape' ? (
+                  <Shapes className="w-4 h-4 text-indigo-600" />
                 ) : (
                   <ImageIcon className="w-4 h-4 text-amber-600" />
                 )}
                 <span>
                   {selectedElement.type === 'text'
                     ? 'Propiedades de Texto'
+                    : selectedElement.type === 'shape'
+                    ? 'Propiedades de Capa / Forma'
                     : 'Propiedades de Imagen'}
                 </span>
               </h3>
@@ -442,9 +557,28 @@ export const RightPanel: React.FC<RightPanelProps> = () => {
 
                 {/* Color */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Color del Texto
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Color del Texto</span>
+                    <Palette className="w-3.5 h-3.5 text-slate-400" />
                   </label>
+                  <div className="flex items-center flex-wrap gap-1.5 mb-2">
+                    {['#0F172A', '#FFFFFF', '#DC2626', '#EA580C', '#EAB308', '#16A34A', '#2563EB', '#7C3AED', '#DB2777'].map((col) => (
+                      <button
+                        key={col}
+                        type="button"
+                        onClick={() => {
+                          pushState(elements);
+                          updateElement(selectedElement.id, { fill: col });
+                        }}
+                        className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
+                          (selectedElement as TextCanvasElement).fill === col
+                            ? 'scale-125 border-blue-600 ring-2 ring-blue-300'
+                            : 'border-slate-300 hover:scale-110'
+                        }`}
+                        style={{ backgroundColor: col }}
+                      />
+                    ))}
+                  </div>
                   <div className="flex items-center space-x-2">
                     <input
                       type="color"
@@ -542,6 +676,289 @@ export const RightPanel: React.FC<RightPanelProps> = () => {
               </div>
             )}
 
+            {/* SHAPE PROPERTIES */}
+            {selectedElement.type === 'shape' && (() => {
+              const shapeEl = selectedElement as ShapeCanvasElement;
+              const QUICK_COLORS = [
+                '#FFFFFF', '#0F172A', '#2563EB', '#0284C7',
+                '#DC2626', '#EA580C', '#16A34A', '#F59E0B',
+                '#7C3AED', '#DB2777', '#E2E8F0', '#94A3B8',
+              ];
+
+              return (
+                <div className="space-y-4">
+                  {/* Shape Type Quick Switcher */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                      <span>Forma Geométrica</span>
+                      <span className="text-[10px] text-blue-600 font-bold uppercase">
+                        {shapeEl.shapeType}
+                      </span>
+                    </label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[
+                        { id: 'rect', label: 'Rectángulo', icon: Square },
+                        { id: 'circle', label: 'Círculo', icon: CircleIcon },
+                        { id: 'ellipse', label: 'Óvalo', icon: CircleIcon },
+                        { id: 'escudo', label: 'Escudo', icon: Shield },
+                        { id: 'star', label: 'Estrella', icon: StarIcon },
+                        { id: 'triangle', label: 'Triángulo', icon: Triangle },
+                        { id: 'badge', label: 'Placa', icon: Square },
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        const isChosen = shapeEl.shapeType === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              pushState(elements);
+                              updateElement(shapeEl.id, { shapeType: item.id as ShapeType });
+                            }}
+                            className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
+                              isChosen
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-2xs font-bold'
+                                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                            title={item.label}
+                          >
+                            <Icon className="w-3.5 h-3.5 mb-0.5" />
+                            <span className="text-[9px] truncate w-full">{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Primary Color & Palette */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                      <span>Color de Relleno (Base)</span>
+                      <span className="text-[10px] font-mono text-slate-500">
+                        {shapeEl.fill || '#2563EB'}
+                      </span>
+                    </label>
+                    <div className="flex items-center space-x-1.5 mb-2">
+                      <input
+                        type="color"
+                        value={shapeEl.fill || '#2563EB'}
+                        onChange={(e) => {
+                          pushState(elements);
+                          updateElement(shapeEl.id, { fill: e.target.value });
+                        }}
+                        className="w-7 h-7 rounded border border-gray-200 cursor-pointer p-0.5 bg-white shrink-0"
+                      />
+                      <input
+                        type="text"
+                        value={shapeEl.fill || '#2563EB'}
+                        onChange={(e) => {
+                          pushState(elements);
+                          updateElement(shapeEl.id, { fill: e.target.value });
+                        }}
+                        className="w-full text-xs font-mono font-semibold text-slate-800 bg-white border border-gray-200 rounded-md p-1.5 uppercase"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-1.5 flex-wrap gap-1">
+                      {QUICK_COLORS.map((col) => (
+                        <button
+                          key={col}
+                          type="button"
+                          onClick={() => {
+                            pushState(elements);
+                            updateElement(shapeEl.id, { fill: col });
+                          }}
+                          className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
+                            shapeEl.fill === col
+                              ? 'scale-125 border-blue-600 ring-2 ring-blue-300'
+                              : 'border-slate-300 hover:scale-110'
+                          }`}
+                          style={{ backgroundColor: col }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Color Pattern Style */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Disposición de Colores
+                    </label>
+                    <select
+                      value={shapeEl.colorPattern || 'solido'}
+                      onChange={(e) => {
+                        pushState(elements);
+                        updateElement(shapeEl.id, {
+                          colorPattern: e.target.value as any,
+                        });
+                      }}
+                      className="w-full text-xs font-semibold text-slate-800 bg-white border border-gray-200 rounded-md p-1.5 focus:border-blue-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="solido">Color Sólido (1 solo color)</option>
+                      <option value="horizontal">Líneas Horizontales (Bicolor 50/50)</option>
+                      <option value="vertical">Líneas Verticales (Bicolor 50/50)</option>
+                      <option value="diagonal">Líneas Diagonales (Bicolor)</option>
+                      <option value="radial">Degradado Radial Suave</option>
+                    </select>
+                  </div>
+
+                  {/* Secondary Color (Shown for bicolor/gradient) */}
+                  {shapeEl.colorPattern && shapeEl.colorPattern !== 'solido' && (
+                    <div className="p-2.5 bg-blue-50/60 rounded-xl border border-blue-100 space-y-1.5">
+                      <label className="block text-xs font-semibold text-slate-700 flex items-center justify-between">
+                        <span>Color Secundario de Capa</span>
+                        <span className="text-[10px] font-mono text-slate-500">
+                          {shapeEl.fillSecondary || '#FFFFFF'}
+                        </span>
+                      </label>
+                      <div className="flex items-center space-x-1.5">
+                        <input
+                          type="color"
+                          value={shapeEl.fillSecondary || '#FFFFFF'}
+                          onChange={(e) => {
+                            pushState(elements);
+                            updateElement(shapeEl.id, { fillSecondary: e.target.value });
+                          }}
+                          className="w-7 h-7 rounded border border-gray-200 cursor-pointer p-0.5 bg-white shrink-0"
+                        />
+                        <div className="flex items-center space-x-1 flex-wrap gap-1 flex-1">
+                          {QUICK_COLORS.slice(0, 8).map((col) => (
+                            <button
+                              key={col}
+                              type="button"
+                              onClick={() => {
+                                pushState(elements);
+                                updateElement(shapeEl.id, { fillSecondary: col });
+                              }}
+                              className={`w-4 h-4 rounded-full border transition-all cursor-pointer ${
+                                shapeEl.fillSecondary === col
+                                  ? 'scale-125 border-blue-600 ring-2 ring-blue-300'
+                                  : 'border-slate-300'
+                              }`}
+                              style={{ backgroundColor: col }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Border / Stroke */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 flex items-center justify-between">
+                      <span>Borde / Contorno de Capa</span>
+                      <span className="text-[10px] text-slate-500">
+                        {shapeEl.strokeWidth || 0} px
+                      </span>
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="color"
+                        value={shapeEl.stroke || '#CBD5E1'}
+                        onChange={(e) => {
+                          pushState(elements);
+                          updateElement(shapeEl.id, { stroke: e.target.value });
+                        }}
+                        className="w-7 h-7 rounded border border-gray-200 cursor-pointer p-0.5 bg-white shrink-0"
+                      />
+                      <div className="flex items-center space-x-1 flex-1">
+                        {[0, 2, 4, 6, 8].map((px) => (
+                          <button
+                            key={px}
+                            type="button"
+                            onClick={() => {
+                              pushState(elements);
+                              updateElement(shapeEl.id, { strokeWidth: px });
+                            }}
+                            className={`flex-1 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                              (shapeEl.strokeWidth || 0) === px
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            }`}
+                          >
+                            {px === 0 ? 'Sin' : `${px}px`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Opacity Slider */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                      <span>Opacidad de la Capa</span>
+                      <span className="text-[10px] text-slate-500 font-bold">
+                        {Math.round((shapeEl.opacity !== undefined ? shapeEl.opacity : 1) * 100)}%
+                      </span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1"
+                      step="0.05"
+                      value={shapeEl.opacity !== undefined ? shapeEl.opacity : 1}
+                      onPointerDown={() => pushState(elements)}
+                      onChange={(e) => {
+                        updateElement(shapeEl.id, { opacity: parseFloat(e.target.value) });
+                      }}
+                      className="w-full accent-blue-600 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Corner Radius (for Rect) */}
+                  {shapeEl.shapeType === 'rect' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                        <span>Redondeo de Esquinas</span>
+                        <span className="text-[10px] text-slate-500 font-bold">
+                          {shapeEl.cornerRadius || 0} px
+                        </span>
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="40"
+                        step="2"
+                        value={shapeEl.cornerRadius || 0}
+                        onPointerDown={() => pushState(elements)}
+                        onChange={(e) => {
+                          updateElement(shapeEl.id, { cornerRadius: parseInt(e.target.value) });
+                        }}
+                        className="w-full accent-blue-600 cursor-pointer"
+                      />
+                    </div>
+                  )}
+
+                  {/* Layer Z-Order Quick Buttons */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        pushState(elements);
+                        reorderZIndex(shapeEl.id, 'up');
+                      }}
+                      className="flex-1 py-1.5 px-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md text-[11px] font-semibold text-slate-700 flex items-center justify-center space-x-1 cursor-pointer"
+                      title="Subir de nivel en la pila de capas"
+                    >
+                      <ArrowUp className="w-3 h-3 text-blue-600" />
+                      <span>Traer al Frente</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        pushState(elements);
+                        reorderZIndex(shapeEl.id, 'down');
+                      }}
+                      className="flex-1 py-1.5 px-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md text-[11px] font-semibold text-slate-700 flex items-center justify-center space-x-1 cursor-pointer"
+                      title="Bajar de nivel en la pila de capas"
+                    >
+                      <ArrowDown className="w-3 h-3 text-slate-600" />
+                      <span>Enviar Atrás</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* UNIVERSAL ACTIONS */}
             <div className="pt-3 border-t border-gray-100 space-y-3">
               <div>
@@ -553,8 +970,8 @@ export const RightPanel: React.FC<RightPanelProps> = () => {
                   min="0"
                   max="360"
                   value={selectedElement.rotation || 0}
+                  onFocus={() => pushState(elements)}
                   onChange={(e) => {
-                    pushState(elements);
                     updateElement(selectedElement.id, {
                       rotation: Number(e.target.value),
                     });
@@ -597,41 +1014,212 @@ export const RightPanel: React.FC<RightPanelProps> = () => {
               </p>
             </div>
 
-            {/* Quick Add Text */}
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-700">
-                Agregar Texto
-              </label>
-              <div className="flex space-x-2">
+            {/* Pacdora-style Quick Add Text Card */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                  <Type className="w-4 h-4 text-blue-600" />
+                  <span>Texto / Escritura</span>
+                </label>
+                <span className="text-[10px] text-slate-400 font-medium">Personalizado</span>
+              </div>
+
+              <div>
                 <input
                   type="text"
                   value={newText}
                   onChange={(e) => setNewText(e.target.value)}
-                  placeholder="Texto personalizado"
-                  className="flex-1 text-xs font-medium text-slate-900 bg-slate-50 border border-gray-200 rounded-md px-2.5 py-2 focus:bg-white focus:border-blue-500 focus:outline-none"
+                  placeholder="Escribí tu texto aquí..."
+                  className="w-full text-xs font-semibold text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
+
+              {/* Font Selector & Color Preview */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Tipografía
+                  </label>
+                  <select
+                    value={newTextFont}
+                    onChange={(e) => setNewTextFont(e.target.value)}
+                    className="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:border-blue-500 focus:outline-none cursor-pointer"
+                  >
+                    {FONT_OPTIONS.map((f) => (
+                      <option key={f} value={f} style={{ fontFamily: f }}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Color de Letra
+                  </label>
+                  <div className="flex items-center space-x-1.5 bg-white border border-slate-200 rounded-lg px-2 py-1">
+                    <input
+                      type="color"
+                      value={newTextColor}
+                      onChange={(e) => setNewTextColor(e.target.value)}
+                      className="w-6 h-6 rounded cursor-pointer border-0 p-0"
+                    />
+                    <span className="text-[11px] font-mono font-medium text-slate-600 truncate">
+                      {newTextColor}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Text Palette Preset Pills */}
+              <div>
+                <div className="flex items-center space-x-1.5 flex-wrap gap-1">
+                  {['#0F172A', '#FFFFFF', '#DC2626', '#EA580C', '#16A34A', '#2563EB', '#7C3AED', '#DB2777'].map((col) => (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => setNewTextColor(col)}
+                      title={col}
+                      className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
+                        newTextColor === col
+                          ? 'scale-125 border-blue-600 ring-2 ring-blue-300'
+                          : 'border-slate-300 hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: col }}
+                    />
+                  ))}
+                </div>
+              </div>
+
               <button
                 onClick={handleAddText}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 px-3 rounded-md text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-xs"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-xs active:scale-98"
               >
                 <Type className="w-3.5 h-3.5" />
-                <span>Insertar Texto</span>
+                <span>Insertar Texto en {configuration.activeSide?.toUpperCase() || 'FRENTE'}</span>
               </button>
             </div>
 
-            {/* Image Upload Dropzone */}
-            <div className="space-y-2 pt-2 border-t border-gray-100">
-              <label className="block text-xs font-semibold text-slate-700">
-                Subir Imagen / Logo
-              </label>
-              <label className="border-2 border-dashed border-gray-200 hover:border-blue-500 rounded-lg p-5 flex flex-col items-center justify-center cursor-pointer transition-all bg-slate-50/50 hover:bg-blue-50/30">
-                <Upload className="w-6 h-6 text-slate-400 mb-2" />
-                <span className="text-xs font-semibold text-slate-700">
-                  Elegir archivo (PNG, JPG, SVG)
+            {/* Quick Add Shape Layers Card (Especialmente para Cartelería) */}
+            <div className="bg-indigo-50/40 border border-indigo-100 rounded-xl p-3.5 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                  <Shapes className="w-4 h-4 text-indigo-600" />
+                  <span>Capas de Formas para Cartel</span>
+                </label>
+                <span className="text-[10px] text-indigo-600 bg-indigo-100/80 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Capas
                 </span>
-                <span className="text-[10px] text-slate-400 mt-0.5">
-                  Máximo 15MB
+              </div>
+
+              <p className="text-[11px] text-slate-500 leading-tight">
+                Superponé formas geométricas por delante del cartel y combinalas con colores o degradados.
+              </p>
+
+              {/* Grid of shapes with instant preview */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { id: 'rect', label: 'Rectángulo', icon: Square },
+                  { id: 'circle', label: 'Círculo', icon: CircleIcon },
+                  { id: 'ellipse', label: 'Óvalo', icon: CircleIcon },
+                  { id: 'escudo', label: 'Escudo', icon: Shield },
+                  { id: 'star', label: 'Estrella', icon: StarIcon },
+                  { id: 'triangle', label: 'Triángulo', icon: Triangle },
+                  { id: 'badge', label: 'Placa', icon: Square },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const isChosen = selectedShapeType === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedShapeType(item.id as ShapeType);
+                      }}
+                      className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
+                        isChosen
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-bold'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+                      }`}
+                      title={`Elegir ${item.label}`}
+                    >
+                      <Icon className="w-3.5 h-3.5 mb-0.5" />
+                      <span className="text-[9px] truncate w-full">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Quick Shape Color Picker */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Color Inicial de la Capa
+                  </label>
+                  <div className="flex items-center space-x-1">
+                    <input
+                      type="color"
+                      value={selectedShapeFill}
+                      onChange={(e) => setSelectedShapeFill(e.target.value)}
+                      className="w-5 h-5 rounded border border-gray-200 cursor-pointer p-0 bg-white shrink-0"
+                    />
+                    <span className="text-[10px] font-mono text-slate-500 uppercase">
+                      {selectedShapeFill}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-1.5 flex-wrap gap-1">
+                  {[
+                    '#2563EB', '#0284C7', '#0F172A', '#FFFFFF',
+                    '#DC2626', '#EA580C', '#16A34A', '#F59E0B',
+                    '#7C3AED', '#DB2777', '#E2E8F0', '#94A3B8',
+                  ].map((col) => (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => setSelectedShapeFill(col)}
+                      title={col}
+                      className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
+                        selectedShapeFill === col
+                          ? 'scale-125 border-indigo-600 ring-2 ring-indigo-300'
+                          : 'border-slate-300 hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: col }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleAddShape()}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-xs active:scale-98"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>➕ Añadir Capa de Forma al Cartel</span>
+              </button>
+            </div>
+
+            {/* Pacdora-style Image Upload Banner */}
+            <div className="space-y-2 pt-1">
+              <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
+                <span>Subir Imagen / Diseño</span>
+                <span className="text-[10px] font-normal text-slate-400">PNG, JPG, SVG</span>
+              </label>
+
+              <label className="group relative border-2 border-dashed border-blue-200 hover:border-blue-500 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all bg-gradient-to-b from-blue-50/40 via-white to-purple-50/30 hover:bg-blue-50/60 shadow-2xs">
+                <div className="w-12 h-12 rounded-full bg-blue-100/70 group-hover:bg-blue-600 group-hover:text-white text-blue-600 flex items-center justify-center mb-2.5 transition-all shadow-2xs group-hover:scale-110">
+                  <Upload className="w-6 h-6 transition-colors" />
+                </div>
+                <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                  Haga clic para cargar
+                </span>
+                <span className="text-[11px] text-slate-500 mt-1 text-center">
+                  O arrastre y suelte la imagen aquí
+                </span>
+                <span className="mt-2 text-[10px] font-semibold text-blue-600 bg-blue-50 group-hover:bg-blue-100 px-2 py-0.5 rounded-full">
+                  Se estampará en: {(configuration.activeSide || 'frente').toUpperCase()}
                 </span>
                 <input
                   type="file"
@@ -641,6 +1229,71 @@ export const RightPanel: React.FC<RightPanelProps> = () => {
                 />
               </label>
             </div>
+
+            {/* Pacdora-style "Maquetas similares" Textile Model Gallery */}
+            {productDef.category === 'textil' && (
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Maquetas similares</span>
+                  </span>
+                  <span className="text-[10px] text-blue-600 font-semibold hover:underline cursor-pointer">
+                    Modelos
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      id: 'textil-remera',
+                      label: 'Remera Cuello Redondo',
+                      sub: 'Algodón 24/1',
+                      iconBg: 'bg-blue-50',
+                      iconColor: 'text-blue-600',
+                    },
+                    {
+                      id: 'textil-hoodie',
+                      label: 'Buzo Hoodie Canguro',
+                      sub: 'Con Capucha',
+                      iconBg: 'bg-purple-50',
+                      iconColor: 'text-purple-600',
+                    },
+                    {
+                      id: 'textil-pulover',
+                      label: 'Sweater Cuello en V',
+                      sub: 'Deportivo',
+                      iconBg: 'bg-emerald-50',
+                      iconColor: 'text-emerald-600',
+                    },
+                  ].map((m) => {
+                    const isCurrent = configuration.productId === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setProduct(m.id)}
+                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between ${
+                          isCurrent
+                            ? 'border-blue-600 bg-blue-50/50 shadow-xs ring-1 ring-blue-400'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div
+                          className={`w-9 h-9 rounded-lg ${m.iconBg} ${m.iconColor} flex items-center justify-center mb-1.5 shadow-2xs`}
+                        >
+                          <Shirt className="w-5 h-5" />
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-800 leading-tight line-clamp-2">
+                          {m.label}
+                        </span>
+                        <span className="text-[9px] text-slate-400 mt-0.5">{m.sub}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

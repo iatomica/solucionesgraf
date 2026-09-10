@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Layers,
   Ruler,
@@ -14,11 +14,11 @@ import {
 } from 'lucide-react';
 import { useProductStore } from '../../stores/useProductStore';
 import { MOCK_PRODUCTS, getProductById } from '../../products/productDefinitions';
-import type { CanvasShape, ProductCategory, StructureType } from '../../types';
+import type { CanvasShape, CartelColorPattern, ProductCategory, StructureType } from '../../types';
 
 const CATEGORY_LABELS: Record<ProductCategory, string> = {
   carteleria: 'Cartelería',
-  textil: 'Textil & Estampería',
+  textil: 'Textil',
 };
 
 const GARMENT_COLORS = [
@@ -29,6 +29,19 @@ const GARMENT_COLORS = [
   { id: '#991B1B', label: 'Rojo Carmín' },
   { id: '#065F46', label: 'Verde Botella' },
   { id: '#78350F', label: 'Beige / Arena' },
+];
+
+const CARTEL_COLOR_PRESETS = [
+  { id: '#FFFFFF', label: 'Blanco Puro' },
+  { id: '#0F172A', label: 'Negro Grafito' },
+  { id: '#1E3A8A', label: 'Azul Marino' },
+  { id: '#0284C7', label: 'Azul Eléctrico' },
+  { id: '#DC2626', label: 'Rojo Carmín' },
+  { id: '#F59E0B', label: 'Amarillo Señal' },
+  { id: '#059669', label: 'Verde Esmeralda' },
+  { id: '#64748B', label: 'Gris Acero' },
+  { id: '#F1F5F9', label: 'Blanco Hueso' },
+  { id: '#78350F', label: 'Marrón Cuero' },
 ];
 
 const SHAPE_NAMES: Record<CanvasShape, string> = {
@@ -52,18 +65,22 @@ export const ProductSidebar: React.FC = () => {
     setStructure,
     setShape,
     setGarmentColor,
+    setCartelBg,
     setPrintPlacement,
     setActiveSide,
     setQuantity,
   } = useProductStore();
 
   const currentProduct = getProductById(configuration.productId);
-  const [selectedCategory, setSelectedCategory] = useState<ProductCategory>(
-    currentProduct.category
-  );
+  const cartelBg = configuration.cartelBg || {
+    pattern: 'solido',
+    primaryColor: '#FFFFFF',
+    secondaryColor: '#0F172A',
+  };
 
+  // Products are strictly isolated by active category: Textil only in Textil, Cartelería only in Cartelería
   const filteredProducts = MOCK_PRODUCTS.filter(
-    (p) => p.category === selectedCategory
+    (p) => p.category === currentProduct.category
   );
 
   const currentMaterial =
@@ -83,46 +100,29 @@ export const ProductSidebar: React.FC = () => {
   const availableShapes = currentProduct.availableShapes || ['rectangular'];
 
   return (
-    <aside className="w-[290px] bg-white border-r border-gray-200 flex flex-col h-full shrink-0 select-none overflow-y-auto">
-      <div className="p-4 border-b border-gray-100 bg-slate-50/50">
+    <aside className="w-[290px] bg-white border-r border-slate-200/80 flex flex-col h-full shrink-0 select-none overflow-y-auto">
+      <div className="p-4 border-b border-slate-100 bg-slate-50/60">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center justify-between">
           <span>Configuración del Producto</span>
           <Layers className="w-3.5 h-3.5 text-slate-400" />
         </h2>
         <p className="text-[11px] text-slate-400">
-          Seleccioná categoría, material, formas y acabados
+          Personalizá modelos, materiales y especificaciones
         </p>
       </div>
 
       <div className="p-4 space-y-5 flex-1">
-        {/* Filtro de Categoría */}
-        <div>
-          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+        {/* Indicador Fijo de Categoría Activa */}
+        <div className="flex items-center justify-between bg-slate-100/70 p-2.5 rounded-xl border border-slate-200/80">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
             Categoría
-          </label>
-          <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200">
-            {(['carteleria', 'textil'] as ProductCategory[]).map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => {
-                    setSelectedCategory(cat);
-                    const firstInCat = MOCK_PRODUCTS.find((p) => p.category === cat);
-                    if (firstInCat) setProduct(firstInCat.id);
-                  }}
-                  className={`text-[10px] font-semibold py-1.5 px-2 rounded-md transition-all text-center truncate ${
-                    selectedCategory === cat
-                      ? 'bg-white text-blue-600 shadow-sm border border-slate-200/80 font-bold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-                  }`}
-                >
-                  {CATEGORY_LABELS[cat]}
-                </button>
-              )
-            )}
-          </div>
+          </span>
+          <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-0.5 rounded-lg border border-slate-200 shadow-2xs">
+            {CATEGORY_LABELS[currentProduct.category]}
+          </span>
         </div>
 
-        {/* 1. Producto */}
+        {/* 1. Producto (filtrado exclusivamente a la categoría activa) */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
             <span>Modelo / Producto</span>
@@ -130,7 +130,7 @@ export const ProductSidebar: React.FC = () => {
           <select
             value={configuration.productId}
             onChange={(e) => setProduct(e.target.value)}
-            className="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-gray-200 rounded-md px-2.5 py-2 focus:bg-white focus:border-blue-500 focus:outline-none transition-all cursor-pointer"
+            className="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:bg-white focus:border-blue-500 focus:outline-hidden transition-all cursor-pointer shadow-2xs"
           >
             {filteredProducts.map((prod) => (
               <option key={prod.id} value={prod.id}>
@@ -164,6 +164,132 @@ export const ProductSidebar: React.FC = () => {
           </div>
         )}
 
+        {/* Controles de Colores y Patrones para Cartelería */}
+        {currentProduct.category === 'carteleria' && (
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-3.5 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                <Palette className="w-3.5 h-3.5 text-blue-600" />
+                <span>Colores y Diseño del Cartel</span>
+              </label>
+              <span className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200 font-medium">
+                {cartelBg.pattern === 'solido' ? '1 Color' : 'Bicolor / Patrón'}
+              </span>
+            </div>
+
+            {/* Selector de Disposición / Patrón de Colores */}
+            <div>
+              <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                Disposición de Colores
+              </span>
+              <select
+                value={cartelBg.pattern}
+                onChange={(e) =>
+                  setCartelBg({ pattern: e.target.value as CartelColorPattern })
+                }
+                className="w-full text-xs font-medium text-slate-800 bg-white border border-slate-200 rounded-lg px-2.5 py-2 focus:border-blue-500 focus:outline-hidden cursor-pointer shadow-2xs"
+              >
+                <option value="solido">Color Sólido (1 solo color)</option>
+                <option value="horizontal">Líneas Rectas Horizontales (Bicolor 50/50)</option>
+                <option value="vertical">Líneas Rectas Verticales (Bicolor 50/50)</option>
+                <option value="diagonal">Líneas Diagonales (Bicolor en ángulo)</option>
+                <option value="circular">Diseño Circular (Centro de contraste)</option>
+                <option value="marco">Marco / Borde Perimetral</option>
+                <option value="degradado-lineal">Degradado Suave Recto</option>
+                <option value="degradado-radial">Degradado Suave Circular</option>
+              </select>
+            </div>
+
+            {/* Color Primario / Fondo Base */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-semibold text-slate-700">
+                  {cartelBg.pattern === 'solido' ? 'Color del Cartel' : 'Color Primario (Base)'}
+                </span>
+                <span className="text-[10px] font-mono text-slate-400 uppercase">
+                  {cartelBg.primaryColor}
+                </span>
+              </div>
+              <div className="flex items-center flex-wrap gap-1.5">
+                {CARTEL_COLOR_PRESETS.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setCartelBg({ primaryColor: c.id })}
+                    title={c.label}
+                    className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
+                      cartelBg.primaryColor.toLowerCase() === c.id.toLowerCase()
+                        ? 'ring-2 ring-blue-600 ring-offset-1 scale-110 shadow-xs'
+                        : 'border-slate-300 hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: c.id }}
+                  />
+                ))}
+                {/* Custom Color Input */}
+                <label
+                  title="Elegir cualquier color personalizado"
+                  className="w-5 h-5 rounded-full border border-dashed border-slate-400 hover:border-blue-600 flex items-center justify-center cursor-pointer transition-all hover:scale-110 overflow-hidden shadow-2xs"
+                >
+                  <input
+                    type="color"
+                    value={cartelBg.primaryColor}
+                    onChange={(e) => setCartelBg({ primaryColor: e.target.value })}
+                    className="sr-only"
+                  />
+                  <div
+                    className="w-full h-full rounded-full"
+                    style={{ backgroundColor: cartelBg.primaryColor }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Color Secundario (visible cuando se usa más de 1 color) */}
+            {cartelBg.pattern !== 'solido' && (
+              <div className="pt-2 border-t border-slate-200/80">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-semibold text-slate-700">
+                    Color Secundario
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400 uppercase">
+                    {cartelBg.secondaryColor}
+                  </span>
+                </div>
+                <div className="flex items-center flex-wrap gap-1.5">
+                  {CARTEL_COLOR_PRESETS.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setCartelBg({ secondaryColor: c.id })}
+                      title={c.label}
+                      className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
+                        cartelBg.secondaryColor.toLowerCase() === c.id.toLowerCase()
+                          ? 'ring-2 ring-emerald-600 ring-offset-1 scale-110 shadow-xs'
+                          : 'border-slate-300 hover:scale-105'
+                      }`}
+                      style={{ backgroundColor: c.id }}
+                    />
+                  ))}
+                  {/* Custom Color Input */}
+                  <label
+                    title="Elegir cualquier color secundario"
+                    className="w-5 h-5 rounded-full border border-dashed border-slate-400 hover:border-emerald-600 flex items-center justify-center cursor-pointer transition-all hover:scale-110 overflow-hidden shadow-2xs"
+                  >
+                    <input
+                      type="color"
+                      value={cartelBg.secondaryColor}
+                      onChange={(e) => setCartelBg({ secondaryColor: e.target.value })}
+                      className="sr-only"
+                    />
+                    <div
+                      className="w-full h-full rounded-full"
+                      style={{ backgroundColor: cartelBg.secondaryColor }}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Controles para Indumentaria Textil */}
         {currentProduct.category === 'textil' && (
           <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 space-y-3">
@@ -172,13 +298,13 @@ export const ProductSidebar: React.FC = () => {
                 <span>Color de Prenda</span>
                 <Palette className="w-3.5 h-3.5 text-blue-500" />
               </label>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center flex-wrap gap-2">
                 {GARMENT_COLORS.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => setGarmentColor(c.id)}
                     title={c.label}
-                    className={`w-6 h-6 rounded-full border-2 transition-all ${
+                    className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer ${
                       configuration.garmentColor === c.id
                         ? 'border-blue-600 scale-110 shadow-md ring-2 ring-blue-300'
                         : 'border-slate-300 hover:scale-105'
@@ -186,6 +312,22 @@ export const ProductSidebar: React.FC = () => {
                     style={{ backgroundColor: c.id }}
                   />
                 ))}
+                {/* Custom Color Input */}
+                <label
+                  title="Color personalizado"
+                  className="relative w-6 h-6 rounded-full border-2 border-dashed border-slate-400 hover:border-blue-500 flex items-center justify-center cursor-pointer transition-all hover:scale-105 overflow-hidden"
+                >
+                  <input
+                    type="color"
+                    value={configuration.garmentColor || '#F8FAFC'}
+                    onChange={(e) => setGarmentColor(e.target.value)}
+                    className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer opacity-0"
+                  />
+                  <div
+                    className="w-full h-full rounded-full"
+                    style={{ backgroundColor: configuration.garmentColor || '#F8FAFC' }}
+                  />
+                </label>
               </div>
             </div>
 

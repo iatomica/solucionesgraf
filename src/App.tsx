@@ -5,18 +5,81 @@ import { ProductSidebar } from './components/configuration/ProductSidebar';
 import { CanvasEditor } from './components/editor/CanvasEditor';
 import { Product3DViewer } from './components/editor/Product3DViewer';
 import { RightPanel } from './components/editor/RightPanel';
+import { MainCategorySelector } from './components/navigation/MainCategorySelector';
+import { CarteleriaChoiceView } from './components/navigation/CarteleriaChoiceView';
+import { WordPressMediaGallery } from './components/gallery/WordPressMediaGallery';
+import { useProductStore } from './stores/useProductStore';
 import { MonitorX } from 'lucide-react';
 
+export type AppView = 'home' | 'carteleria-choice' | 'carteleria-gallery' | 'editor';
+
 export function App() {
+  const [currentView, setCurrentView] = useState<AppView>('home');
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const stageRef = useRef<Konva.Stage | null>(null);
 
+  const { setProduct } = useProductStore();
+
+  // Handle category choice from Main Landing screen
+  const handleSelectCategory = (category: 'textil' | 'carteleria') => {
+    if (category === 'textil') {
+      setProduct('textil-remera');
+      setCurrentView('editor');
+    } else {
+      setCurrentView('carteleria-choice');
+    }
+  };
+
+  // Handle choice in Cartelería step
+  const handleCarteleriaChoice = (option: 'gallery' | 'custom') => {
+    if (option === 'gallery') {
+      setCurrentView('carteleria-gallery');
+    } else {
+      setProduct('cartel-pvc');
+      setCurrentView('editor');
+    }
+  };
+
+  // Screen 1: Home Category Selector (Textil vs Cartelería)
+  if (currentView === 'home') {
+    return <MainCategorySelector onSelectCategory={handleSelectCategory} />;
+  }
+
+  // Screen 2: Cartelería Decision (Elegir diseños ya hechos vs Diseña tu propio diseño)
+  if (currentView === 'carteleria-choice') {
+    return (
+      <CarteleriaChoiceView
+        onBack={() => setCurrentView('home')}
+        onSelectOption={handleCarteleriaChoice}
+      />
+    );
+  }
+
+  // Screen 3: WordPress-Style Media Library (Empty photo boxes, design titles)
+  if (currentView === 'carteleria-gallery') {
+    return (
+      <WordPressMediaGallery
+        onBack={() => setCurrentView('carteleria-choice')}
+        onOpenBlankDesigner={() => {
+          setProduct('cartel-pvc');
+          setCurrentView('editor');
+        }}
+        onSelectDesignTemplate={() => {
+          setCurrentView('editor');
+        }}
+      />
+    );
+  }
+
+  // Screen 4: Main Interactive Graphic & Textile Editor
   return (
     <div className="flex flex-col h-screen w-screen bg-slate-50 overflow-hidden font-sans antialiased">
-      {/* Ultra Minimal Top Header */}
+      {/* Top Header with navigation to return to categories or media gallery */}
       <TopHeader
         viewMode={viewMode}
         onToggleViewMode={() => setViewMode(viewMode === '2d' ? '3d' : '2d')}
+        onNavigateHome={() => setCurrentView('home')}
+        onOpenGallery={() => setCurrentView('carteleria-gallery')}
       />
 
       {/* Main Layout Area */}
@@ -40,7 +103,11 @@ export function App() {
         {viewMode === '3d' ? (
           <Product3DViewer stageRef={stageRef} />
         ) : (
-          <CanvasEditor stageRef={stageRef} />
+          <CanvasEditor
+            stageRef={stageRef}
+            viewMode={viewMode}
+            onToggleViewMode={() => setViewMode('3d')}
+          />
         )}
 
         {/* Right Inspector & Tools Panel */}

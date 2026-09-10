@@ -7,12 +7,15 @@ import {
   Sparkles,
   Box,
   MessageCircle,
+  ArrowLeft,
+  FolderOpen,
 } from 'lucide-react';
 import { useCanvasStore } from '../../stores/useCanvasStore';
 import { useHistoryStore } from '../../stores/useHistoryStore';
 import { useProductStore } from '../../stores/useProductStore';
 import { useQuoteStore } from '../../stores/useQuoteStore';
 import { openWhatsAppUrl } from '../../utils/whatsapp';
+import { getProductById } from '../../products/productDefinitions';
 
 interface TopHeaderProps {
   viewMode: '2d' | '3d';
@@ -20,11 +23,15 @@ interface TopHeaderProps {
   onOpenTemplates?: () => void;
   onRequestQuote?: () => void;
   onExportPng?: () => void;
+  onNavigateHome?: () => void;
+  onOpenGallery?: () => void;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
   viewMode,
   onToggleViewMode,
+  onNavigateHome,
+  onOpenGallery,
 }) => {
   const [designName, setDesignName] = useState('Soluciones Gráficas');
 
@@ -41,6 +48,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
   const { configuration } = useProductStore();
   const { quote } = useQuoteStore();
+  const currentProduct = getProductById(configuration.productId);
 
   const handleSendWhatsApp = () => {
     openWhatsAppUrl(configuration, quote, elements);
@@ -48,20 +56,42 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
   return (
     <header className="h-16 bg-slate-50/80 backdrop-blur-md px-6 flex items-center justify-between text-slate-800 shrink-0 z-30 select-none border-b border-slate-200/60">
-      {/* Left section: Brand Pill & Editable Design Title */}
+      {/* Left section: Back button, Brand Pill & Editable Design Title */}
       <div className="flex items-center space-x-3">
+        {onNavigateHome && (
+          <button
+            onClick={onNavigateHome}
+            className="flex items-center space-x-1.5 text-xs font-bold text-slate-700 hover:text-slate-950 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-full transition-all shadow-2xs cursor-pointer"
+            title="Cambiar categoría de producto (Textil / Cartelería)"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+            <span className="hidden sm:inline">Categorías</span>
+          </button>
+        )}
+
         <div className="flex items-center space-x-2 bg-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-bold tracking-wider shadow-sm">
           <Sparkles className="w-3.5 h-3.5 text-blue-200" />
           <span>SOLUCIONES GRÁFICAS</span>
         </div>
 
-        <div className="h-4 w-px bg-slate-300/60" />
+        {currentProduct.category === 'carteleria' && onOpenGallery && (
+          <button
+            onClick={onOpenGallery}
+            className="flex items-center space-x-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-full transition-all shadow-2xs cursor-pointer"
+            title="Abrir catálogo de diseños y biblioteca de medios"
+          >
+            <FolderOpen className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Biblioteca de Medios</span>
+          </button>
+        )}
+
+        <div className="h-4 w-px bg-slate-300/60 hidden sm:block" />
 
         <input
           type="text"
           value={designName}
           onChange={(e) => setDesignName(e.target.value)}
-          className="text-xs font-semibold text-slate-900 bg-transparent hover:bg-white/60 focus:bg-white border border-transparent hover:border-slate-200 focus:border-blue-500 rounded-lg px-2.5 py-1 outline-none transition-all w-48 truncate"
+          className="text-xs font-semibold text-slate-900 bg-transparent hover:bg-white/60 focus:bg-white border border-transparent hover:border-slate-200 focus:border-blue-500 rounded-lg px-2.5 py-1 outline-none transition-all w-40 md:w-48 truncate hidden sm:block"
           title="Editar nombre del proyecto"
         />
       </div>

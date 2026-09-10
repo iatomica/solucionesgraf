@@ -40,7 +40,7 @@ export const Product3DViewer: React.FC<Product3DViewerProps> = ({ stageRef }) =>
 
     // 1. Scene setup
     const scene: any = new T.Scene();
-    scene.background = new T.Color('#0F172A'); // Deep slate studio backdrop
+    scene.background = isTextil ? null : new T.Color('#0F172A'); // Transparent for textile, deep slate for signage
 
     // 2. Perspective Camera
     const camera: any = new T.PerspectiveCamera(45, width / height, 0.1, 1000);
@@ -463,6 +463,56 @@ export const Product3DViewer: React.FC<Product3DViewerProps> = ({ stageRef }) =>
   const thicknessLabel = isTextil
     ? 'Standard 180g - 320g'
     : material.thickness;
+
+  if (isTextil) {
+    return (
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className="flex-1 bg-slate-100 flex flex-col items-center justify-center relative overflow-hidden select-none"
+      >
+        {/* Drag & Drop Visual Overlay */}
+        {isDraggingOver && (
+          <div className="absolute inset-4 z-50 bg-blue-900/70 backdrop-blur-sm border-4 border-dashed border-blue-400 rounded-2xl flex flex-col items-center justify-center text-white space-y-3 pointer-events-none animate-pulse">
+            <div className="p-4 bg-blue-600 rounded-full shadow-lg">
+              <UploadCloud className="w-10 h-10 text-white" />
+            </div>
+            <span className="text-base font-bold tracking-wide">
+              ¡Soltá tu imagen aquí para estampar en la superficie 3D!
+            </span>
+          </div>
+        )}
+
+        {/* Textile Card Frame matching Pacdora */}
+        <div className="relative w-[640px] max-w-[90vw] aspect-[4/3] rounded-[28px] border border-gray-300 shadow-xl overflow-hidden bg-white flex items-center justify-center">
+          {/* Background Checkerboard Transparency Pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(45deg,#f0f0f0_25%,transparent_25%),linear-gradient(-45deg,#f0f0f0_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f0f0f0_75%),linear-gradient(-45deg,transparent_75%,#f0f0f0_75%)] bg-[size:14px_14px] bg-[position:0_0,0_7px,7px_-7px,-7px_0px] pointer-events-none" />
+
+          {/* Top-Left 3D Active Badge */}
+          <div
+            className="absolute top-3.5 left-3.5 z-30 flex flex-col items-center justify-center bg-blue-600 text-white shadow-xs border border-blue-500 rounded-xl px-2 py-1 select-none"
+            title="Vista 3D activa (Arrastrá para rotar 360°)"
+          >
+            <span className="text-[11px] font-black leading-none tracking-tight">3D</span>
+            <svg className="w-5 h-2.5 text-white mt-0.5" viewBox="0 0 24 12" fill="none">
+              <path d="M2 7 C2 12 22 12 22 7 C22 3 13 3 7 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path d="M5 3 L8 5.5 L4.5 8" fill="currentColor" />
+            </svg>
+          </div>
+
+          {/* Three.js Mount Container */}
+          <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing z-10" />
+
+          {/* Bottom Controls Guidance */}
+          <div className="absolute bottom-3 z-20 text-[10px] text-slate-500 font-medium bg-white/90 backdrop-blur-xs px-3 py-1 rounded-full border border-gray-200 flex items-center space-x-1.5 shadow-xs">
+            <Info className="w-3 h-3 text-blue-500" />
+            <span>Arrastrá para rotar en 3D 360° • Rueda del mouse para zoom</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
