@@ -255,15 +255,9 @@ export const Product3DViewer: React.FC<Product3DViewerProps> = ({ stageRef }) =>
         mainMesh = new T.Mesh(geometry, garmentMaterial);
         mainMesh.position.z = -bodyDepth / 2;
 
-        // Crewneck Torus Rim
-        const neckRimGeo = new T.TorusGeometry(hw * 0.35, 0.02, 16, 32);
-        const neckRimMesh = new T.Mesh(neckRimGeo, garmentMaterial);
-        neckRimMesh.position.set(0, hh * 0.82, bodyDepth / 2 + 0.005);
-        neckRimMesh.rotation.x = Math.PI / 4;
-        boardGroup.add(neckRimMesh);
-
-        frontZPos = bodyDepth / 2 + 0.01;
-        backZPos = -bodyDepth / 2 - 0.01;
+        // Crewneck clean bevel (rimless)
+        frontZPos = bodyDepth / 2 + 0.012;
+        backZPos = -bodyDepth / 2 - 0.012;
       }
     } else {
       const contour3DShape = create3DShape(configuration.shape || 'rectangular', w3D, h3D);
