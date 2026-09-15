@@ -32,8 +32,9 @@ export const RealisticGarmentMockup: React.FC<RealisticGarmentMockupProps> = ({
 
   return (
     <div
-      className="relative flex items-center justify-center select-none"
+      className={`relative flex items-center justify-center select-none ${!hasElements && onUploadClick ? 'cursor-pointer' : ''}`}
       style={{ width: `${width}px`, height: `${height}px` }}
+      onClick={!hasElements ? onUploadClick : undefined}
     >
       <svg
         viewBox="0 0 600 640"
@@ -334,55 +335,20 @@ export const RealisticGarmentMockup: React.FC<RealisticGarmentMockupProps> = ({
           </g>
         )}
 
-        {/* 5. Safe Print Area Boundary (Subtle Dashed Guide matching Pacdora) */}
-        <rect
-          x="215"
-          y="180"
-          width="170"
-          height="255"
-          rx="4"
-          fill="none"
-          stroke={isDarkGarment ? 'rgba(255,255,255,0.25)' : 'rgba(15,23,42,0.15)'}
-          strokeWidth="1"
-          strokeDasharray="4,4"
-          className="pointer-events-none"
-        />
-
-        {/* 6. Empty State Placeholder text matching Pacdora: 'Sube tu imagen / 789 × 1186 px' */}
-        {!hasElements && (
-          <g
-            className="cursor-pointer transition-opacity hover:opacity-80"
-            onClick={onUploadClick}
-          >
-            <text
-              x="300"
-              y="295"
-              textAnchor="middle"
-              className="text-lg font-semibold"
-              style={{
-                fontFamily: 'Inter, system-ui, sans-serif',
-                fontSize: '18px',
-                fontWeight: 500,
-                fill: isDarkGarment ? '#F8FAFC' : '#1E293B',
-              }}
-            >
-              Sube tu imagen
-            </text>
-            <text
-              x="300"
-              y="325"
-              textAnchor="middle"
-              className="text-sm font-normal"
-              style={{
-                fontFamily: 'Inter, system-ui, sans-serif',
-                fontSize: '15px',
-                fontWeight: 400,
-                fill: isDarkGarment ? '#94A3B8' : '#475569',
-              }}
-            >
-              789 × 1186 px
-            </text>
-          </g>
+        {/* 5. Safe Print Area Boundary (Subtle Dashed Guide visible when designing) */}
+        {hasElements && (
+          <rect
+            x="215"
+            y="180"
+            width="170"
+            height="255"
+            rx="4"
+            fill="none"
+            stroke={isDarkGarment ? 'rgba(255,255,255,0.25)' : 'rgba(15,23,42,0.15)'}
+            strokeWidth="1"
+            strokeDasharray="4,4"
+            className="pointer-events-none"
+          />
         )}
       </svg>
 
