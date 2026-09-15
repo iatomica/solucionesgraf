@@ -101,13 +101,13 @@ export const RealisticGarmentMockup: React.FC<RealisticGarmentMockupProps> = ({
               fill={garmentColor}
             />
           ) : isSweater ? (
-            /* Sweater Silhouette */
+            /* Sweater Silhouette with V-Neck */
             <path
-              d="M 215,95 
-                 C 255,108 345,108 385,95 
-                 L 455,128 L 520,290 L 460,318 L 430,240 L 430,555 
-                 Q 300,570 170,555 
-                 L 170,240 L 140,318 L 80,290 L 145,128 Z"
+              d={
+                isBack
+                  ? "M 220,92 Q 300,104 380,92 L 455,128 L 520,290 L 460,318 L 430,240 L 430,555 Q 300,570 170,555 L 170,240 L 140,318 L 80,290 L 145,128 Z"
+                  : "M 220,92 L 300,158 L 380,92 L 455,128 L 520,290 L 460,318 L 430,240 L 430,555 Q 300,570 170,555 L 170,240 L 140,318 L 80,290 L 145,128 Z"
+              }
               fill={garmentColor}
             />
           ) : (
@@ -199,7 +199,11 @@ export const RealisticGarmentMockup: React.FC<RealisticGarmentMockupProps> = ({
         <g>
           {/* Cylindrical Torso Shading */}
           <path
-            d="M 215,95 L 385,95 L 418,235 L 418,555 Q 300,572 182,555 L 182,235 Z"
+            d={
+              isSweater && !isBack
+                ? "M 220,92 L 300,158 L 380,92 L 418,235 L 418,555 Q 300,572 182,555 L 182,235 Z"
+                : "M 215,95 L 385,95 L 418,235 L 418,555 Q 300,572 182,555 L 182,235 Z"
+            }
             fill="url(#body3DShade)"
             style={{ mixBlendMode: 'multiply' }}
           />
@@ -253,73 +257,171 @@ export const RealisticGarmentMockup: React.FC<RealisticGarmentMockupProps> = ({
         </g>
 
         {/* 3. Collar Assembly & Realistic Ribbed Neckline */}
-        <g>
-          {/* Dark Inner Neck Shadow (inside the shirt) */}
-          <path
-            d="M 225,92 C 260,65 340,65 375,92 C 340,110 260,110 225,92 Z"
-            fill="#3F3F46"
-            opacity={isBack ? 0 : 0.85}
-          />
+        {isSweater ? (
+          /* --- V-NECK SWEATER COLLAR ASSEMBLY --- */
+          <g>
+            {/* Dark Inner Neck Cavity (inside the sweater) */}
+            {!isBack && (
+              <path
+                d="M 220,92 C 255,82 345,82 380,92 L 300,158 Z"
+                fill="#27272A"
+                opacity="0.88"
+              />
+            )}
 
-          {/* Inside Neck Collar Label / Brand Stitch (faint) */}
-          {!isBack && (
-            <rect
-              x="285"
-              y="74"
-              width="30"
-              height="16"
-              rx="2"
-              fill="#E4E4E7"
-              opacity="0.6"
-            />
-          )}
+            {/* Inside Neck Collar Brand Label */}
+            {!isBack && (
+              <rect
+                x="285"
+                y="85"
+                width="30"
+                height="15"
+                rx="2"
+                fill="#E4E4E7"
+                opacity="0.65"
+              />
+            )}
 
-          {/* Front Collar Cast Shadow onto Chest */}
-          {!isBack && (
+            {/* Inner Back Rim of Neck */}
+            {!isBack && (
+              <path
+                d="M 220,92 C 255,84 345,84 380,92 C 345,90 255,90 220,92 Z"
+                fill="#FFFFFF"
+                stroke="#CBD5E1"
+                strokeWidth="1.2"
+              />
+            )}
+
+            {/* Front V-Collar Cast Shadow onto Chest */}
+            {!isBack && (
+              <path
+                d="M 216,92 L 300,170 L 384,92 L 300,180 Z"
+                fill="url(#collarDropShadow)"
+              />
+            )}
+
+            {/* V-Neck Ribbed Band (Thick Sweater Knitted Trim) */}
+            {!isBack ? (
+              <g>
+                {/* Main V-Neck Band Polygon */}
+                <path
+                  d="M 216,92 L 300,172 L 384,92 L 378,92 L 300,158 L 222,92 Z"
+                  fill="#FFFFFF"
+                  stroke="#CBD5E1"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+
+                {/* Center Miter Seam of the V-Neck */}
+                <line
+                  x1="300"
+                  y1="158"
+                  x2="300"
+                  y2="172"
+                  stroke="#94A3B8"
+                  strokeWidth="1.5"
+                />
+
+                {/* Inner Stitch Guide Line */}
+                <path
+                  d="M 219,94 L 300,161 L 381,94"
+                  stroke="#94A3B8"
+                  strokeWidth="1.2"
+                  strokeDasharray="3,2"
+                  fill="none"
+                  opacity="0.6"
+                />
+
+                {/* V-Neck Diagonal Ribbing Lines - Left Flange */}
+                <line x1="238" y1="108" x2="244" y2="114" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="256" y1="123" x2="262" y2="129" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="274" y1="138" x2="280" y2="144" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round" />
+
+                {/* V-Neck Diagonal Ribbing Lines - Right Flange */}
+                <line x1="362" y1="108" x2="356" y2="114" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="344" y1="123" x2="338" y2="129" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="326" y1="138" x2="320" y2="144" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round" />
+              </g>
+            ) : (
+              /* Back Collar Rim for V-Neck Sweater */
+              <path
+                d="M 220,92 C 255,80 345,80 380,92 C 345,98 255,98 220,92 Z"
+                fill="#FFFFFF"
+                stroke="#CBD5E1"
+                strokeWidth="1.5"
+              />
+            )}
+          </g>
+        ) : (
+          /* --- CREWNECK COLLAR ASSEMBLY (Remera / Hoodie) --- */
+          <g>
+            {/* Dark Inner Neck Shadow (inside the shirt) */}
             <path
-              d="M 225,92 C 260,135 340,135 375,92 C 340,118 260,118 225,92 Z"
-              fill="url(#collarDropShadow)"
+              d="M 225,92 C 260,65 340,65 375,92 C 340,110 260,110 225,92 Z"
+              fill="#3F3F46"
+              opacity={isBack ? 0 : 0.85}
             />
-          )}
 
-          {/* Crewneck Ribbed Band */}
-          <path
-            d="M 225,92 
-               C 260,114 340,114 375,92 
-               C 344,124 256,124 225,92 Z"
-            fill="#FFFFFF"
-            stroke="#CBD5E1"
-            strokeWidth="1.5"
-          />
+            {/* Inside Neck Collar Label / Brand Stitch (faint) */}
+            {!isBack && (
+              <rect
+                x="285"
+                y="74"
+                width="30"
+                height="16"
+                rx="2"
+                fill="#E4E4E7"
+                opacity="0.6"
+              />
+            )}
 
-          {/* Inner Collar Stitch Line */}
-          <path
-            d="M 228,94 C 260,118 340,118 372,94"
-            stroke="#94A3B8"
-            strokeWidth="1.2"
-            strokeDasharray="3,2"
-            fill="none"
-            opacity="0.6"
-          />
+            {/* Front Collar Cast Shadow onto Chest */}
+            {!isBack && (
+              <path
+                d="M 225,92 C 260,135 340,135 375,92 C 340,118 260,118 225,92 Z"
+                fill="url(#collarDropShadow)"
+              />
+            )}
 
-          {/* Collar Ribbing Texture Lines */}
-          <path
-            d="M 250,99 L 248,106 M 270,105 L 269,113 M 290,107 L 290,116 M 310,107 L 310,116 M 330,105 L 331,113 M 350,99 L 352,106"
-            stroke="#CBD5E1"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-          />
-
-          {/* Back Collar Rim if Back Side */}
-          {isBack && (
+            {/* Crewneck Ribbed Band */}
             <path
-              d="M 225,92 C 260,82 340,82 375,92 C 340,102 260,102 225,92 Z"
+              d="M 225,92 
+                 C 260,114 340,114 375,92 
+                 C 344,124 256,124 225,92 Z"
               fill="#FFFFFF"
               stroke="#CBD5E1"
               strokeWidth="1.5"
             />
-          )}
-        </g>
+
+            {/* Inner Collar Stitch Line */}
+            <path
+              d="M 228,94 C 260,118 340,118 372,94"
+              stroke="#94A3B8"
+              strokeWidth="1.2"
+              strokeDasharray="3,2"
+              fill="none"
+              opacity="0.6"
+            />
+
+            {/* Collar Ribbing Texture Lines */}
+            <path
+              d="M 250,99 L 248,106 M 270,105 L 269,113 M 290,107 L 290,116 M 310,107 L 310,116 M 330,105 L 331,113 M 350,99 L 352,106"
+              stroke="#CBD5E1"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+            />
+
+            {/* Back Collar Rim if Back Side */}
+            {isBack && (
+              <path
+                d="M 225,92 C 260,82 340,82 375,92 C 340,102 260,102 225,92 Z"
+                fill="#FFFFFF"
+                stroke="#CBD5E1"
+                strokeWidth="1.5"
+              />
+            )}
+          </g>
+        )}
 
         {/* 4. Kangaroo Pocket for Hoodie */}
         {isHoodie && !isBack && (
