@@ -281,39 +281,47 @@ export const Product3DViewer: React.FC<Product3DViewerProps> = ({ stageRef }) =>
     // 8. Front and Back Imprint Texture Planes
     const frontImprintMaterial = new T.MeshBasicMaterial({
       transparent: true,
-      opacity: 0.99,
+      opacity: 1.0,
       depthWrite: false,
-      alphaTest: 0.01,
+      alphaTest: 0.05,
     });
 
     const backImprintMaterial = new T.MeshBasicMaterial({
       transparent: true,
-      opacity: 0.99,
+      opacity: 1.0,
       depthWrite: false,
-      alphaTest: 0.01,
+      alphaTest: 0.05,
     });
 
+    let frontPlane: any = null;
+    let backPlane: any = null;
+
     if (isTextil) {
-      const imprintW = w3D * 0.8;
-      const imprintH = h3D * 0.8;
+      const hh = h3D / 2;
+      // Chest print area matching 2D safe area aspect ratio (170x255 => 2:3)
+      const imprintW = w3D * 0.48;
+      const imprintH = imprintW * 1.5;
       const imprintGeo = new T.PlaneGeometry(imprintW, imprintH);
 
       // Front Imprint Plane (Chest Area)
-      const frontPlane = new T.Mesh(imprintGeo, frontImprintMaterial);
-      frontPlane.position.set(0, -h3D * 0.04, frontZPos);
+      frontPlane = new T.Mesh(imprintGeo, frontImprintMaterial);
+      frontPlane.position.set(0, hh * 0.02, frontZPos);
+      frontPlane.visible = false;
       boardGroup.add(frontPlane);
 
       // Back Imprint Plane (Dorsal Area)
-      const backPlane = new T.Mesh(imprintGeo, backImprintMaterial);
-      backPlane.position.set(0, -h3D * 0.04, backZPos);
+      backPlane = new T.Mesh(imprintGeo, backImprintMaterial);
+      backPlane.position.set(0, hh * 0.02, backZPos);
       backPlane.rotation.y = Math.PI;
+      backPlane.visible = false;
       boardGroup.add(backPlane);
 
     } else {
       // Single Front Imprint Plane for Signage / Stickers
       const imprintGeo = new T.PlaneGeometry(w3D, h3D);
-      const frontPlane = new T.Mesh(imprintGeo, frontImprintMaterial);
+      frontPlane = new T.Mesh(imprintGeo, frontImprintMaterial);
       frontPlane.position.set(0, 0, frontZPos);
+      frontPlane.visible = false;
       boardGroup.add(frontPlane);
     }
 
@@ -324,47 +332,72 @@ export const Product3DViewer: React.FC<Product3DViewerProps> = ({ stageRef }) =>
         const bgNodes = stage.find('.product-bg');
         bgNodes.forEach((node: any) => node.hide());
 
+        // Hide transformers and alignment guides so they don't get printed on 3D mesh
+        const transformers = stage.find('Transformer');
+        transformers.forEach((node: any) => node.hide());
+        const guides = stage.find('.alignment-guides-layer');
+        guides.forEach((node: any) => node.hide());
+
         const loader = new T.TextureLoader();
 
         if (isTextil) {
-          // 1. Capture Front Side Elements
-          elements.forEach((el) => {
-            const node = stage.findOne('#' + el.id);
-            if (node) {
-              const side = el.side || 'frente';
-              if (side === 'frente' || side === 'ambos') node.show();
-              else node.hide();
-            }
-          });
+          const frontElements = elements.filter(
+            (el) => (el.side || 'frente') === 'frente' || el.side === 'ambos'
+          );
+          const backElements = elements.filter(
+            (el) => el.side === 'espalda' || el.side === 'ambos'
+          );
 
-          const frontDataUrl = stage.toDataURL({ pixelRatio: 2 });
-          loader.load(frontDataUrl, (tex: any) => {
-            tex.colorSpace = T.SRGBColorSpace;
-            tex.needsUpdate = true;
-            frontImprintMaterial.map = tex;
-            frontImprintMaterial.needsUpdate = true;
-          });
+          // 1. Capture Front Side Elements only if they exist
+          if (frontElements.length > 0) {
+            elements.forEach((el) => {
+              const node = stage.findOne('#' + el.id);
+              if (node) {
+                const side = el.side || 'frente';
+                if (side === 'frente' || side === 'ambos') node.show();
+                else node.hide();
+              }
+            });
 
-          // 2. Capture Back Side Elements
-          elements.forEach((el) => {
-            const node = stage.findOne('#' + el.id);
-            if (node) {
-              const side = el.side || 'frente';
-              if (side === 'espalda' || side === 'ambos') node.show();
-              else node.hide();
-            }
-          });
+            const frontDataUrl = stage.toDataURL({ pixelRatio: 2 });
+            loader.load(frontDataUrl, (tex: any) => {
+              tex.colorSpace = T.SRGBColorSpace;
+              tex.needsUpdate = true;
+              frontImprintMaterial.map = tex;
+              frontImprintMaterial.needsUpdate = true;
+              if (frontPlane) frontPlane.visible = true;
+            });
+          } else {
+            if (frontPlane) frontPlane.visible = false;
+          }
 
-          const backDataUrl = stage.toDataURL({ pixelRatio: 2 });
-          loader.load(backDataUrl, (tex: any) => {
-            tex.colorSpace = T.SRGBColorSpace;
-            tex.needsUpdate = true;
-            backImprintMaterial.map = tex;
-            backImprintMaterial.needsUpdate = true;
-          });
+          // 2. Capture Back Side Elements only if they exist
+          if (backElements.length > 0) {
+            elements.forEach((el) => {
+              const node = stage.findOne('#' + el.id);
+              if (node) {
+                const side = el.side || 'frente';
+                if (side === 'espalda' || side === 'ambos') node.show();
+                else node.hide();
+              }
+            });
+
+            const backDataUrl = stage.toDataURL({ pixelRatio: 2 });
+            loader.load(backDataUrl, (tex: any) => {
+              tex.colorSpace = T.SRGBColorSpace;
+              tex.needsUpdate = true;
+              backImprintMaterial.map = tex;
+              backImprintMaterial.needsUpdate = true;
+              if (backPlane) backPlane.visible = true;
+            });
+          } else {
+            if (backPlane) backPlane.visible = false;
+          }
 
           // Restore node visibility
           bgNodes.forEach((node: any) => node.show());
+          transformers.forEach((node: any) => node.show());
+          guides.forEach((node: any) => node.show());
           elements.forEach((el) => {
             const node = stage.findOne('#' + el.id);
             if (node) node.show();
@@ -372,15 +405,22 @@ export const Product3DViewer: React.FC<Product3DViewerProps> = ({ stageRef }) =>
 
         } else {
           // Capture All Elements for General Products / Adhesivos
-          const dataUrl = stage.toDataURL({ pixelRatio: 2 });
-          bgNodes.forEach((node: any) => node.show());
+          if (elements.length > 0) {
+            const dataUrl = stage.toDataURL({ pixelRatio: 2 });
+            loader.load(dataUrl, (tex: any) => {
+              tex.colorSpace = T.SRGBColorSpace;
+              tex.needsUpdate = true;
+              frontImprintMaterial.map = tex;
+              frontImprintMaterial.needsUpdate = true;
+              if (frontPlane) frontPlane.visible = true;
+            });
+          } else {
+            if (frontPlane) frontPlane.visible = false;
+          }
 
-          loader.load(dataUrl, (tex: any) => {
-            tex.colorSpace = T.SRGBColorSpace;
-            tex.needsUpdate = true;
-            frontImprintMaterial.map = tex;
-            frontImprintMaterial.needsUpdate = true;
-          });
+          bgNodes.forEach((node: any) => node.show());
+          transformers.forEach((node: any) => node.show());
+          guides.forEach((node: any) => node.show());
         }
       } catch (err) {
         console.warn('Could not capture dual side stage textures for 3D viewer', err);
