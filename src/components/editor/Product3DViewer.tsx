@@ -123,141 +123,234 @@ export const Product3DViewer: React.FC<Product3DViewerProps> = ({ stageRef }) =>
       const hh = h3D / 2;
       const productId = configuration.productId;
 
+      // Anatomical body curvature displacement on chest and torso
+      const applyTorsoCurvature = (geo: any, maxDisplacement: number = 0.038) => {
+        const pos = geo.attributes.position;
+        if (!pos) return;
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i);
+          const y = pos.getY(i);
+          const z = pos.getZ(i);
+
+          const normX = Math.min(1, Math.abs(x) / (hw * 1.3));
+          const archFactor = Math.max(0, 1 - normX * normX);
+          const normY = Math.max(0, Math.min(1, (y + hh) / (2 * hh)));
+          const chestFactor = Math.sin(normY * Math.PI * 0.85);
+          const deltaZ = archFactor * chestFactor * maxDisplacement;
+
+          if (z > 0.001) {
+            pos.setZ(i, z + deltaZ);
+          } else if (z < -0.001) {
+            pos.setZ(i, z - deltaZ * 0.7);
+          }
+        }
+        geo.computeVertexNormals();
+      };
+
       const garmentShape = new T.Shape();
 
       if (productId === 'textil-hoodie') {
-        // --- 3D HOODIE MESH ASSEMBLY ---
-        const sleeveW = hw * 0.65;
-        const bodyDepth = 0.045;
+        // --- REALISTIC 3D HOODIE MESH ASSEMBLY ---
+        const bodyDepth = 0.09;
 
-        garmentShape.moveTo(hw * 1.05, -hh);
-        garmentShape.lineTo(hw * 1.05, hh * 0.2);
-        garmentShape.lineTo(hw + sleeveW, -hh * 0.35);
-        garmentShape.lineTo(hw + sleeveW + 0.12, -hh * 0.2);
-        garmentShape.lineTo(hw * 0.42, hh * 0.88);
-        // Volumetric Hood curve top extending above neck
-        garmentShape.quadraticCurveTo(hw * 0.3, hh * 1.35, 0, hh * 1.4);
-        garmentShape.quadraticCurveTo(-hw * 0.3, hh * 1.35, -hw * 0.42, hh * 0.88);
-        garmentShape.lineTo(-hw - sleeveW - 0.12, -hh * 0.2);
-        garmentShape.lineTo(-hw - sleeveW, -hh * 0.35);
-        garmentShape.lineTo(-hw * 1.05, hh * 0.2);
-        garmentShape.lineTo(-hw * 1.05, -hh);
+        // Bottom hem with natural curve
+        garmentShape.moveTo(hw * 1.02, -hh);
+        garmentShape.quadraticCurveTo(0, -hh * 1.025, -hw * 1.02, -hh);
+        // Left hip to underarm with slight waist taper
+        garmentShape.quadraticCurveTo(-hw * 0.96, -hh * 0.2, -hw * 1.02, hh * 0.25);
+        // Left underarm curve to long sleeve cuff (hanging naturally downward)
+        garmentShape.quadraticCurveTo(-hw * 1.15, hh * 0.1, -hw * 1.38, -hh * 0.28);
+        // Left sleeve cuff opening
+        garmentShape.quadraticCurveTo(-hw * 1.48, -hh * 0.20, -hw * 1.52, -hh * 0.12);
+        // Left outer sleeve curve up to deltoid/shoulder
+        garmentShape.quadraticCurveTo(-hw * 1.46, hh * 0.38, -hw * 0.96, hh * 0.76);
+        // Left shoulder slope to hood neckline
+        garmentShape.quadraticCurveTo(-hw * 0.65, hh * 0.86, -hw * 0.36, hh * 0.84);
+        // Volumetric hood top dome
+        garmentShape.quadraticCurveTo(-hw * 0.30, hh * 1.30, 0, hh * 1.35);
+        garmentShape.quadraticCurveTo(hw * 0.30, hh * 1.30, hw * 0.36, hh * 0.84);
+        // Right shoulder slope to deltoid
+        garmentShape.quadraticCurveTo(hw * 0.65, hh * 0.86, hw * 0.96, hh * 0.76);
+        // Right outer sleeve down
+        garmentShape.quadraticCurveTo(hw * 1.46, hh * 0.38, hw * 1.52, -hh * 0.12);
+        // Right sleeve cuff opening
+        garmentShape.quadraticCurveTo(hw * 1.48, -hh * 0.20, hw * 1.38, -hh * 0.28);
+        // Right underarm curve into torso
+        garmentShape.quadraticCurveTo(hw * 1.15, hh * 0.1, hw * 1.02, hh * 0.25);
+        // Right torso waist to bottom hem
+        garmentShape.quadraticCurveTo(hw * 0.96, -hh * 0.2, hw * 1.02, -hh);
         garmentShape.closePath();
 
         geometry = new T.ExtrudeGeometry(garmentShape, {
           depth: bodyDepth,
           bevelEnabled: true,
-          bevelSegments: 4,
-          steps: 1,
-          bevelSize: 0.015,
-          bevelThickness: 0.015,
+          bevelSegments: 5,
+          steps: 4,
+          bevelSize: 0.02,
+          bevelThickness: 0.02,
         });
+        applyTorsoCurvature(geometry, 0.04);
         mainMesh = new T.Mesh(geometry, garmentMaterial);
         mainMesh.position.z = -bodyDepth / 2;
 
         // 3D Kangaroo Pouch Pocket mounted on front lower torso
         const pocketShape = new T.Shape();
-        const pw = hw * 0.65;
-        const ph = hh * 0.38;
-        pocketShape.moveTo(pw, -hh + 0.02);
+        const pw = hw * 0.62;
+        const ph = hh * 0.35;
+        pocketShape.moveTo(pw, -hh + 0.03);
         pocketShape.lineTo(pw * 0.72, -hh + ph);
-        pocketShape.lineTo(-pw * 0.72, -hh + ph);
-        pocketShape.lineTo(-pw, -hh + 0.02);
+        pocketShape.quadraticCurveTo(0, -hh + ph + 0.02, -pw * 0.72, -hh + ph);
+        pocketShape.lineTo(-pw, -hh + 0.03);
+        pocketShape.quadraticCurveTo(0, -hh + 0.01, pw, -hh + 0.03);
         pocketShape.closePath();
 
         const pocketGeo = new T.ExtrudeGeometry(pocketShape, {
-          depth: 0.018,
+          depth: 0.022,
           bevelEnabled: true,
-          bevelSize: 0.006,
-          bevelThickness: 0.006,
+          bevelSegments: 3,
+          bevelSize: 0.008,
+          bevelThickness: 0.008,
         });
+        applyTorsoCurvature(pocketGeo, 0.03);
         const pocketMesh = new T.Mesh(pocketGeo, garmentMaterial);
-        pocketMesh.position.set(0, 0, bodyDepth / 2);
+        pocketMesh.position.set(0, 0, bodyDepth / 2 + 0.01);
         pocketMesh.castShadow = true;
         boardGroup.add(pocketMesh);
 
         // 3D Hood Dome Shell on back collar
-        const hoodShellGeo = new T.SphereGeometry(hw * 0.38, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.6);
+        const hoodShellGeo = new T.SphereGeometry(hw * 0.40, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.65);
         const hoodShellMesh = new T.Mesh(hoodShellGeo, garmentMaterial);
-        hoodShellMesh.position.set(0, hh * 0.9, -bodyDepth / 2 - 0.02);
+        hoodShellMesh.position.set(0, hh * 0.88, -bodyDepth / 2 - 0.04);
         hoodShellMesh.rotation.x = -Math.PI / 4;
+        hoodShellMesh.scale.set(1, 1.15, 0.95);
         hoodShellMesh.castShadow = true;
         boardGroup.add(hoodShellMesh);
 
-        frontZPos = bodyDepth / 2 + 0.015;
-        backZPos = -bodyDepth / 2 - 0.015;
+        frontZPos = bodyDepth / 2 + 0.045;
+        backZPos = -bodyDepth / 2 - 0.035;
 
       } else if (productId === 'textil-pulover') {
-        // --- 3D SWEATER / PULOVER MESH ASSEMBLY ---
-        const sleeveW = hw * 0.6;
-        const bodyDepth = 0.035;
+        // --- REALISTIC 3D SWEATER / PULOVER MESH ASSEMBLY ---
+        const bodyDepth = 0.075;
 
-        garmentShape.moveTo(hw, -hh);
-        garmentShape.lineTo(hw * 1.02, hh * 0.25);
-        garmentShape.lineTo(hw + sleeveW, -hh * 0.35);
-        garmentShape.lineTo(hw + sleeveW + 0.1, -hh * 0.2);
-        garmentShape.lineTo(hw * 0.35, hh * 0.95);
-        // V-Neck collar notch
-        garmentShape.lineTo(0, hh * 0.55);
-        garmentShape.lineTo(-hw * 0.35, hh * 0.95);
-        garmentShape.lineTo(-hw - sleeveW - 0.1, -hh * 0.2);
-        garmentShape.lineTo(-hw - sleeveW, -hh * 0.35);
-        garmentShape.lineTo(-hw * 1.02, hh * 0.25);
-        garmentShape.lineTo(-hw, -hh);
+        // Bottom hem
+        garmentShape.moveTo(hw * 0.96, -hh);
+        garmentShape.quadraticCurveTo(0, -hh * 1.025, -hw * 0.96, -hh);
+        // Left hip to waist to underarm
+        garmentShape.quadraticCurveTo(-hw * 0.90, -hh * 0.2, -hw * 0.98, hh * 0.26);
+        // Left underarm to long sleeve cuff
+        garmentShape.quadraticCurveTo(-hw * 1.12, hh * 0.1, -hw * 1.36, -hh * 0.24);
+        // Left sleeve cuff
+        garmentShape.quadraticCurveTo(-hw * 1.45, -hh * 0.16, -hw * 1.48, -hh * 0.08);
+        // Left outer sleeve up to shoulder/deltoid
+        garmentShape.quadraticCurveTo(-hw * 1.42, hh * 0.42, -hw * 0.94, hh * 0.78);
+        // Left shoulder slope to collar
+        garmentShape.quadraticCurveTo(-hw * 0.65, hh * 0.90, -hw * 0.34, hh * 0.86);
+        // V-Neck collar notch down to center
+        garmentShape.lineTo(0, hh * 0.48);
+        // V-Neck collar notch up to right collar
+        garmentShape.lineTo(hw * 0.34, hh * 0.86);
+        // Right shoulder slope to deltoid
+        garmentShape.quadraticCurveTo(hw * 0.65, hh * 0.90, hw * 0.94, hh * 0.78);
+        // Right outer sleeve down
+        garmentShape.quadraticCurveTo(hw * 1.42, hh * 0.42, hw * 1.48, -hh * 0.08);
+        // Right sleeve cuff
+        garmentShape.quadraticCurveTo(hw * 1.45, -hh * 0.16, hw * 1.36, -hh * 0.24);
+        // Right underarm to torso
+        garmentShape.quadraticCurveTo(hw * 1.12, hh * 0.1, hw * 0.98, hh * 0.26);
+        // Right torso to bottom hem
+        garmentShape.quadraticCurveTo(hw * 0.90, -hh * 0.2, hw * 0.96, -hh);
         garmentShape.closePath();
 
         geometry = new T.ExtrudeGeometry(garmentShape, {
           depth: bodyDepth,
           bevelEnabled: true,
-          bevelSegments: 4,
-          steps: 1,
-          bevelSize: 0.012,
-          bevelThickness: 0.012,
+          bevelSegments: 5,
+          steps: 4,
+          bevelSize: 0.018,
+          bevelThickness: 0.018,
         });
+        applyTorsoCurvature(geometry, 0.038);
         mainMesh = new T.Mesh(geometry, garmentMaterial);
         mainMesh.position.z = -bodyDepth / 2;
 
-        // V-Neck Rib Trim Mesh
-        const collarRibGeo = new T.BoxGeometry(hw * 0.65, 0.04, 0.04);
-        const collarRibMesh = new T.Mesh(collarRibGeo, garmentMaterial);
-        collarRibMesh.position.set(0, hh * 0.72, bodyDepth / 2 + 0.005);
-        boardGroup.add(collarRibMesh);
+        // V-Neck 3D Trim Rib Band
+        const vTrimShape = new T.Shape();
+        vTrimShape.moveTo(-hw * 0.34, hh * 0.86);
+        vTrimShape.lineTo(0, hh * 0.48);
+        vTrimShape.lineTo(hw * 0.34, hh * 0.86);
+        vTrimShape.lineTo(hw * 0.38, hh * 0.86);
+        vTrimShape.lineTo(0, hh * 0.43);
+        vTrimShape.lineTo(-hw * 0.38, hh * 0.86);
+        vTrimShape.closePath();
 
-        frontZPos = bodyDepth / 2 + 0.012;
-        backZPos = -bodyDepth / 2 - 0.012;
+        const vTrimGeo = new T.ExtrudeGeometry(vTrimShape, {
+          depth: 0.018,
+          bevelEnabled: true,
+          bevelSegments: 2,
+          bevelSize: 0.005,
+          bevelThickness: 0.005,
+        });
+        applyTorsoCurvature(vTrimGeo, 0.038);
+        const vTrimMesh = new T.Mesh(vTrimGeo, garmentMaterial);
+        vTrimMesh.position.set(0, 0, bodyDepth / 2 + 0.006);
+        boardGroup.add(vTrimMesh);
+
+        frontZPos = bodyDepth / 2 + 0.045;
+        backZPos = -bodyDepth / 2 - 0.035;
 
       } else {
-        // --- 3D REMERA (T-SHIRT) MESH ASSEMBLY ---
-        const sleeveW = hw * 0.45;
-        const bodyDepth = 0.028;
+        // --- REALISTIC 3D REMERA (T-SHIRT) MESH ASSEMBLY ---
+        const bodyDepth = 0.075;
 
-        garmentShape.moveTo(hw, -hh);
-        garmentShape.lineTo(hw, hh * 0.22);
-        garmentShape.lineTo(hw + sleeveW, hh * 0.08);
-        garmentShape.lineTo(hw + sleeveW + 0.08, hh * 0.45);
-        garmentShape.lineTo(hw * 0.38, hh);
-        // Crewneck collar curve
-        garmentShape.quadraticCurveTo(0, hh * 0.65, -hw * 0.38, hh);
-        garmentShape.lineTo(-hw - sleeveW - 0.08, hh * 0.45);
-        garmentShape.lineTo(-hw - sleeveW, hh * 0.08);
-        garmentShape.lineTo(-hw, hh * 0.22);
-        garmentShape.lineTo(-hw, -hh);
+        // Bottom hem with natural curve
+        garmentShape.moveTo(hw * 0.96, -hh);
+        garmentShape.quadraticCurveTo(0, -hh * 1.025, -hw * 0.96, -hh);
+        // Left hip to waist to underarm
+        garmentShape.quadraticCurveTo(-hw * 0.90, -hh * 0.2, -hw * 0.96, hh * 0.28);
+        // Left underarm curve to sleeve cuff inner (hanging naturally downward)
+        garmentShape.quadraticCurveTo(-hw * 1.06, hh * 0.24, -hw * 1.28, hh * 0.02);
+        // Left sleeve cuff opening (soft curve)
+        garmentShape.quadraticCurveTo(-hw * 1.38, hh * 0.12, -hw * 1.44, hh * 0.24);
+        // Left outer sleeve up to shoulder/deltoid
+        garmentShape.quadraticCurveTo(-hw * 1.35, hh * 0.52, -hw * 0.94, hh * 0.78);
+        // Left shoulder slope to collar
+        garmentShape.quadraticCurveTo(-hw * 0.65, hh * 0.90, -hw * 0.35, hh * 0.85);
+        // Crewneck scoop collar curve
+        garmentShape.quadraticCurveTo(0, hh * 0.52, hw * 0.35, hh * 0.85);
+        // Right shoulder slope to deltoid
+        garmentShape.quadraticCurveTo(hw * 0.65, hh * 0.90, hw * 0.94, hh * 0.78);
+        // Right outer sleeve down
+        garmentShape.quadraticCurveTo(hw * 1.35, hh * 0.52, hw * 1.44, hh * 0.24);
+        // Right sleeve cuff opening
+        garmentShape.quadraticCurveTo(hw * 1.38, hh * 0.12, hw * 1.28, hh * 0.02);
+        // Right underarm curve to torso
+        garmentShape.quadraticCurveTo(hw * 1.06, hh * 0.24, hw * 0.96, hh * 0.28);
+        // Right torso waist to bottom hem
+        garmentShape.quadraticCurveTo(hw * 0.90, -hh * 0.2, hw * 0.96, -hh);
         garmentShape.closePath();
 
         geometry = new T.ExtrudeGeometry(garmentShape, {
           depth: bodyDepth,
           bevelEnabled: true,
-          bevelSegments: 3,
-          steps: 1,
-          bevelSize: 0.01,
-          bevelThickness: 0.01,
+          bevelSegments: 5,
+          steps: 4,
+          bevelSize: 0.02,
+          bevelThickness: 0.02,
         });
+        applyTorsoCurvature(geometry, 0.038);
         mainMesh = new T.Mesh(geometry, garmentMaterial);
         mainMesh.position.z = -bodyDepth / 2;
 
-        // Crewneck clean bevel (rimless)
-        frontZPos = bodyDepth / 2 + 0.012;
-        backZPos = -bodyDepth / 2 - 0.012;
+        // 3D Crewneck Collar Ring
+        const collarGeo = new T.TorusGeometry(hw * 0.34, 0.015, 16, 48, Math.PI * 1.2);
+        const collarMesh = new T.Mesh(collarGeo, garmentMaterial);
+        collarMesh.position.set(0, hh * 0.68, bodyDepth / 2 + 0.025);
+        collarMesh.rotation.x = Math.PI * 0.60;
+        boardGroup.add(collarMesh);
+
+        frontZPos = bodyDepth / 2 + 0.045;
+        backZPos = -bodyDepth / 2 - 0.035;
       }
     } else {
       const contour3DShape = create3DShape(configuration.shape || 'rectangular', w3D, h3D);
