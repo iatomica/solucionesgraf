@@ -3,6 +3,7 @@ FROM node:20-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
+RUN npm install @rolldown/binding-linux-arm64-gnu @rolldown/binding-linux-x64-gnu --no-save || true
 COPY . .
 RUN npm run build
 
